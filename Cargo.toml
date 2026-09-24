@@ -1,0 +1,15 @@
+[package]
+name = "modular-agent-autogui"
+version = "0.1.0"
+edition = "2024"
+authors = ["Akira Ishino <akira@lumilab.jp>"]
+license = "Apache-2.0 OR MIT"
+description = "Keyboard and mouse control modules for Modular Agent"
+
+[dependencies]
+enigo = "0.6.1"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.145"
+tokio = { version = "1", features = ["rt"] }
+
+modular-agent-core = { path = "../../crates/modular-agent-core" }
