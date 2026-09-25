@@ -1,0 +1,786 @@
+{
+  "modules": [
+    {
+      "id": "1",
+      "def_name": "modular_agent_std::ui::NoteModule",
+      "configs": {
+        "note": "# AutoGUI showcase\n\nStart the patch, then press a **Unit Input** on the left. Every row sends real keyboard and mouse input to the desktop.\n\n- **Row 1 — Mouse Position**: reads the cursor position.\n- **Row 2 — GUI Action** (Windows only): opens Notepad with Win+R and types into it. The Object Input holds the action array; each action is one step, run in order with `pause_ms` between them.\n- **Row 3 — Type Text → Hotkey**: after a 3-second Delay, types the text into whatever has focus, then presses `shift+home` to select the typed line. Click into a text editor during the delay.\n\n- **Row 4 — Move Mouse → Mouse Position → Click → Hotkey**: glides the mouse 200 px right over half a second, reads where it landed, right-clicks there to open a context menu, then closes it with `esc`.\n\n**Abort**: move the mouse into a screen corner to stop a running sequence (`failsafe`).\n\n**Edit while stopped**: a Text Input or Object Input sends its value as soon as it is edited while the patch is running, which would fire the input right away."
+      },
+      "config_specs": {
+        "note": {
+          "value": "",
+          "type": "markdown",
+          "hide_title": true
+        }
+      },
+      "x": -760,
+      "y": 0,
+      "width": 700,
+      "height": 540
+    },
+    {
+      "id": "2",
+      "def_name": "modular_agent_std::input::UnitInputModule",
+      "outputs": [
+        "unit"
+      ],
+      "configs": {
+        "unit": {}
+      },
+      "config_specs": {
+        "unit": {
+          "value": null,
+          "type": "unit",
+          "hide_title": true
+        }
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "3",
+      "def_name": "modular_agent_autogui::modules::MousePositionModule",
+      "inputs": [
+        "unit"
+      ],
+      "outputs": [
+        "position"
+      ],
+      "configs": {
+        "scale": 1.0
+      },
+      "config_specs": {
+        "scale": {
+          "value": 1.0,
+          "type": "number"
+        }
+      },
+      "x": 240,
+      "y": 0
+    },
+    {
+      "id": "4",
+      "def_name": "modular_agent_std::display::DisplayValueModule",
+      "inputs": [
+        "value"
+      ],
+      "configs": {
+        "save_value": false,
+        "value": null
+      },
+      "config_specs": {
+        "save_value": {
+          "value": false,
+          "type": "boolean",
+          "title": "Save Value",
+          "description": "Persist the displayed value in the patch file",
+          "detail": true
+        },
+        "value": {
+          "value": null,
+          "type": "*",
+          "hide_title": true,
+          "readonly": true
+        }
+      },
+      "x": 520,
+      "y": 0
+    },
+    {
+      "id": "5",
+      "def_name": "modular_agent_std::input::UnitInputModule",
+      "outputs": [
+        "unit"
+      ],
+      "configs": {
+        "unit": {}
+      },
+      "config_specs": {
+        "unit": {
+          "value": null,
+          "type": "unit",
+          "hide_title": true
+        }
+      },
+      "x": 0,
+      "y": 240
+    },
+    {
+      "id": "6",
+      "def_name": "modular_agent_std::input::ObjectInputModule",
+      "inputs": [
+        "unit"
+      ],
+      "outputs": [
+        "object"
+      ],
+      "configs": {
+        "object": [
+          {
+            "action": "hotkey",
+            "keys": [
+              "win",
+              "r"
+            ]
+          },
+          {
+            "action": "wait",
+            "ms": 500
+          },
+          {
+            "action": "type",
+            "text": "notepad"
+          },
+          {
+            "action": "key",
+            "key": "enter"
+          },
+          {
+            "action": "wait",
+            "ms": 1500
+          },
+          {
+            "action": "type",
+            "text": "Hello from Modular Agent!"
+          },
+          {
+            "action": "key",
+            "key": "enter"
+          }
+        ]
+      },
+      "config_specs": {
+        "object": {
+          "value": {},
+          "type": "object",
+          "hide_title": true
+        }
+      },
+      "x": 240,
+      "y": 240,
+      "width": 320,
+      "height": 440
+    },
+    {
+      "id": "7",
+      "def_name": "modular_agent_autogui::modules::GuiActionModule",
+      "inputs": [
+        "action"
+      ],
+      "outputs": [
+        "done"
+      ],
+      "configs": {
+        "pause_ms": 50,
+        "scale": 1.0,
+        "failsafe": true
+      },
+      "config_specs": {
+        "pause_ms": {
+          "value": 50,
+          "type": "integer"
+        },
+        "scale": {
+          "value": 1.0,
+          "type": "number"
+        },
+        "failsafe": {
+          "value": true,
+          "type": "boolean"
+        }
+      },
+      "x": 640,
+      "y": 240
+    },
+    {
+      "id": "8",
+      "def_name": "modular_agent_std::display::DisplayValueModule",
+      "inputs": [
+        "value"
+      ],
+      "configs": {
+        "save_value": false,
+        "value": null
+      },
+      "config_specs": {
+        "save_value": {
+          "value": false,
+          "type": "boolean",
+          "title": "Save Value",
+          "description": "Persist the displayed value in the patch file",
+          "detail": true
+        },
+        "value": {
+          "value": null,
+          "type": "*",
+          "hide_title": true,
+          "readonly": true
+        }
+      },
+      "x": 920,
+      "y": 240
+    },
+    {
+      "id": "9",
+      "def_name": "modular_agent_std::display::DisplayValueModule",
+      "inputs": [
+        "value"
+      ],
+      "configs": {
+        "save_value": false,
+        "value": null
+      },
+      "config_specs": {
+        "save_value": {
+          "value": false,
+          "type": "boolean",
+          "title": "Save Value",
+          "description": "Persist the displayed value in the patch file",
+          "detail": true
+        },
+        "value": {
+          "value": null,
+          "type": "*",
+          "hide_title": true,
+          "readonly": true
+        }
+      },
+      "x": 920,
+      "y": 480
+    },
+    {
+      "id": "10",
+      "def_name": "modular_agent_std::input::UnitInputModule",
+      "outputs": [
+        "unit"
+      ],
+      "configs": {
+        "unit": {}
+      },
+      "config_specs": {
+        "unit": {
+          "value": null,
+          "type": "unit",
+          "hide_title": true
+        }
+      },
+      "x": 0,
+      "y": 760
+    },
+    {
+      "id": "11",
+      "def_name": "modular_agent_std::input::TextInputModule",
+      "inputs": [
+        "unit"
+      ],
+      "outputs": [
+        "text"
+      ],
+      "configs": {
+        "text": "Typed by Modular Agent"
+      },
+      "config_specs": {
+        "text": {
+          "value": "",
+          "type": "text",
+          "hide_title": true
+        }
+      },
+      "x": 240,
+      "y": 760
+    },
+    {
+      "id": "12",
+      "def_name": "modular_agent_std::time::DelayModule",
+      "inputs": [
+        "value"
+      ],
+      "outputs": [
+        "value"
+      ],
+      "configs": {
+        "delay": 3000,
+        "capacity": 10
+      },
+      "config_specs": {
+        "delay": {
+          "value": 1000,
+          "type": "integer",
+          "title": "delay (ms)"
+        },
+        "capacity": {
+          "value": 10,
+          "type": "integer"
+        }
+      },
+      "x": 520,
+      "y": 760
+    },
+    {
+      "id": "13",
+      "def_name": "modular_agent_autogui::modules::TypeTextModule",
+      "inputs": [
+        "text"
+      ],
+      "outputs": [
+        "done"
+      ],
+      "configs": {
+        "interval_ms": 30,
+        "failsafe": true
+      },
+      "config_specs": {
+        "interval_ms": {
+          "value": 0,
+          "type": "integer"
+        },
+        "failsafe": {
+          "value": true,
+          "type": "boolean"
+        }
+      },
+      "x": 760,
+      "y": 760
+    },
+    {
+      "id": "14",
+      "def_name": "modular_agent_autogui::modules::HotkeyModule",
+      "inputs": [
+        "unit"
+      ],
+      "outputs": [
+        "done"
+      ],
+      "configs": {
+        "keys": "shift+home",
+        "failsafe": true
+      },
+      "config_specs": {
+        "keys": {
+          "value": "",
+          "type": "string"
+        },
+        "failsafe": {
+          "value": true,
+          "type": "boolean"
+        }
+      },
+      "x": 1040,
+      "y": 760
+    },
+    {
+      "id": "15",
+      "def_name": "modular_agent_std::display::DisplayValueModule",
+      "inputs": [
+        "value"
+      ],
+      "configs": {
+        "save_value": false,
+        "value": null
+      },
+      "config_specs": {
+        "save_value": {
+          "value": false,
+          "type": "boolean",
+          "title": "Save Value",
+          "description": "Persist the displayed value in the patch file",
+          "detail": true
+        },
+        "value": {
+          "value": null,
+          "type": "*",
+          "hide_title": true,
+          "readonly": true
+        }
+      },
+      "x": 1320,
+      "y": 760
+    },
+    {
+      "id": "16",
+      "def_name": "modular_agent_std::display::DisplayValueModule",
+      "inputs": [
+        "value"
+      ],
+      "configs": {
+        "save_value": false,
+        "value": null
+      },
+      "config_specs": {
+        "save_value": {
+          "value": false,
+          "type": "boolean",
+          "title": "Save Value",
+          "description": "Persist the displayed value in the patch file",
+          "detail": true
+        },
+        "value": {
+          "value": null,
+          "type": "*",
+          "hide_title": true,
+          "readonly": true
+        }
+      },
+      "x": 1320,
+      "y": 1000
+    },
+    {
+      "id": "17",
+      "def_name": "modular_agent_std::input::UnitInputModule",
+      "outputs": [
+        "unit"
+      ],
+      "configs": {
+        "unit": {}
+      },
+      "config_specs": {
+        "unit": {
+          "value": null,
+          "type": "unit",
+          "hide_title": true
+        }
+      },
+      "x": 0,
+      "y": 1240
+    },
+    {
+      "id": "18",
+      "def_name": "modular_agent_std::input::ObjectInputModule",
+      "inputs": [
+        "unit"
+      ],
+      "outputs": [
+        "object"
+      ],
+      "configs": {
+        "object": {
+          "x": 200,
+          "y": 0
+        }
+      },
+      "config_specs": {
+        "object": {
+          "value": {},
+          "type": "object",
+          "hide_title": true
+        }
+      },
+      "x": 240,
+      "y": 1240
+    },
+    {
+      "id": "19",
+      "def_name": "modular_agent_autogui::modules::MoveMouseModule",
+      "inputs": [
+        "position"
+      ],
+      "outputs": [
+        "done"
+      ],
+      "configs": {
+        "duration_ms": 500,
+        "relative": true,
+        "scale": 1.0,
+        "failsafe": true
+      },
+      "config_specs": {
+        "duration_ms": {
+          "value": 0,
+          "type": "integer"
+        },
+        "relative": {
+          "value": false,
+          "type": "boolean"
+        },
+        "scale": {
+          "value": 1.0,
+          "type": "number"
+        },
+        "failsafe": {
+          "value": true,
+          "type": "boolean"
+        }
+      },
+      "x": 520,
+      "y": 1240
+    },
+    {
+      "id": "24",
+      "def_name": "modular_agent_autogui::modules::MousePositionModule",
+      "inputs": [
+        "unit"
+      ],
+      "outputs": [
+        "position"
+      ],
+      "configs": {
+        "scale": 1.0
+      },
+      "config_specs": {
+        "scale": {
+          "value": 1.0,
+          "type": "number"
+        }
+      },
+      "x": 800,
+      "y": 1240
+    },
+    {
+      "id": "20",
+      "def_name": "modular_agent_autogui::modules::ClickModule",
+      "inputs": [
+        "position"
+      ],
+      "outputs": [
+        "done"
+      ],
+      "configs": {
+        "button": "right",
+        "clicks": 1,
+        "scale": 1.0,
+        "failsafe": true
+      },
+      "config_specs": {
+        "button": {
+          "value": "left",
+          "type": "string"
+        },
+        "clicks": {
+          "value": 1,
+          "type": "integer"
+        },
+        "scale": {
+          "value": 1.0,
+          "type": "number"
+        },
+        "failsafe": {
+          "value": true,
+          "type": "boolean"
+        }
+      },
+      "x": 1080,
+      "y": 1240
+    },
+    {
+      "id": "21",
+      "def_name": "modular_agent_autogui::modules::HotkeyModule",
+      "inputs": [
+        "unit"
+      ],
+      "outputs": [
+        "done"
+      ],
+      "configs": {
+        "keys": "esc",
+        "failsafe": true
+      },
+      "config_specs": {
+        "keys": {
+          "value": "",
+          "type": "string"
+        },
+        "failsafe": {
+          "value": true,
+          "type": "boolean"
+        }
+      },
+      "x": 1360,
+      "y": 1240
+    },
+    {
+      "id": "22",
+      "def_name": "modular_agent_std::display::DisplayValueModule",
+      "inputs": [
+        "value"
+      ],
+      "configs": {
+        "save_value": false,
+        "value": null
+      },
+      "config_specs": {
+        "save_value": {
+          "value": false,
+          "type": "boolean",
+          "title": "Save Value",
+          "description": "Persist the displayed value in the patch file",
+          "detail": true
+        },
+        "value": {
+          "value": null,
+          "type": "*",
+          "hide_title": true,
+          "readonly": true
+        }
+      },
+      "x": 1640,
+      "y": 1240
+    },
+    {
+      "id": "23",
+      "def_name": "modular_agent_std::display::DisplayValueModule",
+      "inputs": [
+        "value"
+      ],
+      "configs": {
+        "save_value": false,
+        "value": null
+      },
+      "config_specs": {
+        "save_value": {
+          "value": false,
+          "type": "boolean",
+          "title": "Save Value",
+          "description": "Persist the displayed value in the patch file",
+          "detail": true
+        },
+        "value": {
+          "value": null,
+          "type": "*",
+          "hide_title": true,
+          "readonly": true
+        }
+      },
+      "x": 1640,
+      "y": 1480
+    }
+  ],
+  "connections": [
+    {
+      "source": "2",
+      "source_handle": "unit",
+      "target": "3",
+      "target_handle": "unit"
+    },
+    {
+      "source": "3",
+      "source_handle": "position",
+      "target": "4",
+      "target_handle": "value"
+    },
+    {
+      "source": "5",
+      "source_handle": "unit",
+      "target": "6",
+      "target_handle": "unit"
+    },
+    {
+      "source": "6",
+      "source_handle": "object",
+      "target": "7",
+      "target_handle": "action"
+    },
+    {
+      "source": "7",
+      "source_handle": "done",
+      "target": "8",
+      "target_handle": "value"
+    },
+    {
+      "source": "7",
+      "source_handle": "err",
+      "target": "9",
+      "target_handle": "value"
+    },
+    {
+      "source": "10",
+      "source_handle": "unit",
+      "target": "11",
+      "target_handle": "unit"
+    },
+    {
+      "source": "11",
+      "source_handle": "text",
+      "target": "12",
+      "target_handle": "value"
+    },
+    {
+      "source": "12",
+      "source_handle": "value",
+      "target": "13",
+      "target_handle": "text"
+    },
+    {
+      "source": "13",
+      "source_handle": "done",
+      "target": "14",
+      "target_handle": "unit"
+    },
+    {
+      "source": "14",
+      "source_handle": "done",
+      "target": "15",
+      "target_handle": "value"
+    },
+    {
+      "source": "13",
+      "source_handle": "err",
+      "target": "16",
+      "target_handle": "value"
+    },
+    {
+      "source": "14",
+      "source_handle": "err",
+      "target": "16",
+      "target_handle": "value"
+    },
+    {
+      "source": "17",
+      "source_handle": "unit",
+      "target": "18",
+      "target_handle": "unit"
+    },
+    {
+      "source": "18",
+      "source_handle": "object",
+      "target": "19",
+      "target_handle": "position"
+    },
+    {
+      "source": "19",
+      "source_handle": "done",
+      "target": "24",
+      "target_handle": "unit"
+    },
+    {
+      "source": "24",
+      "source_handle": "position",
+      "target": "20",
+      "target_handle": "position"
+    },
+    {
+      "source": "20",
+      "source_handle": "done",
+      "target": "21",
+      "target_handle": "unit"
+    },
+    {
+      "source": "21",
+      "source_handle": "done",
+      "target": "22",
+      "target_handle": "value"
+    },
+    {
+      "source": "19",
+      "source_handle": "err",
+      "target": "23",
+      "target_handle": "value"
+    },
+    {
+      "source": "20",
+      "source_handle": "err",
+      "target": "23",
+      "target_handle": "value"
+    },
+    {
+      "source": "21",
+      "source_handle": "err",
+      "target": "23",
+      "target_handle": "value"
+    }
+  ],
+  "viewport": {
+    "x": 820,
+    "y": 80,
+    "zoom": 0.5
+  }
+}

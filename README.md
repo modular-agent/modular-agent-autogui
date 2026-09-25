@@ -7,13 +7,24 @@ Keyboard and mouse control for Modular Agent, in the spirit of pyautogui.
 | GUI Action | Runs action objects (`move`, `click`, `drag`, `scroll`, `type`, `key`, `hotkey`, `wait`, …), one or an array |
 | Type Text | Types the input string |
 | Hotkey | Presses a key combination such as `ctrl+c` |
+| Move Mouse | Moves the mouse to an input `{x, y}`, optionally relative or over a duration |
+| Click | Clicks at an input `{x, y}`, or in place for any other value |
 | Mouse Position | Outputs the current mouse position |
 
 Coordinates are pixels on the primary monitor. Pair `scale` with the `scale` of
 lifelog's Screen Capture to click at coordinates read from a scaled screenshot.
+For a capture of a single window, also pass the capture event's `x`/`y` as
+`origin` so the coordinates are offset to where the window is.
 
 Moving the mouse into a screen corner aborts a running sequence (`failsafe`,
 on by default).
+
+## Example
+
+[`examples/showcase.json`](examples/showcase.json) exercises every module:
+reading the mouse position, a GUI Action sequence that opens Notepad and types
+into it (Windows only), Type Text followed by a Hotkey, and a Move Mouse glide
+followed by a right Click. Each row starts from its own Unit Input.
 
 ## Platform notes
 
