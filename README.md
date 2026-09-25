@@ -7,28 +7,46 @@ Keyboard and mouse control for Modular Agent, in the spirit of pyautogui.
 | GUI Action | Runs action objects (`move`, `click`, `drag`, `scroll`, `type`, `key`, `hotkey`, `wait`, …), one or an array |
 | Type Text | Types the input string |
 | Hotkey | Presses a key combination such as `ctrl+c` |
-| Move Mouse | Moves the mouse to an input `{x, y}`, optionally relative or over a duration |
-| Click | Clicks at an input `{x, y}`, or in place for any other value |
-| Mouse Position | Outputs the current mouse position |
+| Move Mouse | Moves the mouse to an input `{x, y}`, or to an offset in a window from Find Window |
+| Click | Clicks at an input `{x, y}`, at an offset in a window from Find Window, or in place |
+| Mouse Position | Outputs the mouse position, on screen and in the window under it |
+| Find Window | Finds a window by title or process, brings it to the front and fixes its size (Windows only) |
 
 Coordinates are pixels on the primary monitor. Pair `scale` with the `scale` of
 lifelog's Screen Capture to click at coordinates read from a scaled screenshot.
-For a capture of a single window, also pass the capture event's `x`/`y` as
-`origin` so the coordinates are offset to where the window is.
 
 Moving the mouse into a screen corner aborts a running sequence (`failsafe`,
 on by default).
+
+## Automating an application
+
+To click a control of an application, address it relative to its window
+rather than the screen:
+
+1. **Find Window** locates the window, brings it to the front and resizes its
+   client area to a fixed size, so controls stay at the same place in it. A
+   window already at that size is left alone.
+2. **Mouse Position**, with the pointer on the control, reports its offset in
+   the window under `window`.
+3. **Click** (or Move Mouse) takes the window from Find Window and clicks at
+   that offset, set in its `x`/`y` configs, from the `anchor` corner.
+
+Window offsets and sizes are logical pixels: physical pixels at 100% display
+scaling. Applications scale their controls with the display, so the same
+numbers reach the same control at any scaling.
 
 ## Example
 
 [`examples/showcase.json`](examples/showcase.json) exercises every module:
 reading the mouse position, a GUI Action sequence that opens Notepad and types
-into it (Windows only), Type Text followed by a Hotkey, and a Move Mouse glide
-followed by a right Click. Each row starts from its own Unit Input.
+into it (Windows only), Type Text followed by a Hotkey, a Move Mouse glide
+followed by a right Click, and Find Window fixing Notepad's size before a
+Click into it. Each row starts from its own Unit Input.
 
 ## Platform notes
 
 - **Windows**: input does not reach windows of applications running as
-  administrator unless this app runs as administrator too.
+  administrator unless this app runs as administrator too. Windows may refuse
+  to bring a window to the front; Find Window then fails.
 - **macOS**: the app needs the Accessibility permission.
 - **Linux**: X11 is supported by default.

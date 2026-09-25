@@ -4,7 +4,7 @@
       "id": "1",
       "def_name": "modular_agent_std::ui::NoteModule",
       "configs": {
-        "note": "# AutoGUI showcase\n\nStart the patch, then press a **Unit Input** on the left. Every row sends real keyboard and mouse input to the desktop.\n\n- **Row 1 — Mouse Position**: reads the cursor position.\n- **Row 2 — GUI Action** (Windows only): opens Notepad with Win+R and types into it. The Object Input holds the action array; each action is one step, run in order with `pause_ms` between them.\n- **Row 3 — Type Text → Hotkey**: after a 3-second Delay, types the text into whatever has focus, then presses `shift+home` to select the typed line. Click into a text editor during the delay.\n\n- **Row 4 — Move Mouse → Mouse Position → Click → Hotkey**: glides the mouse 200 px right over half a second, reads where it landed, right-clicks there to open a context menu, then closes it with `esc`.\n\n**Abort**: move the mouse into a screen corner to stop a running sequence (`failsafe`).\n\n**Edit while stopped**: a Text Input or Object Input sends its value as soon as it is edited while the patch is running, which would fire the input right away."
+        "note": "# AutoGUI showcase\n\nStart the patch, then press a **Unit Input** on the left. Every row sends real keyboard and mouse input to the desktop.\n\n- **Row 1 — Mouse Position**: reads the cursor position, and its offset in the window under it.\n- **Row 2 — GUI Action** (Windows only): opens Notepad with Win+R and types into it. The Object Input holds the action array; each action is one step, run in order with `pause_ms` between them.\n- **Row 3 — Type Text → Hotkey**: after a 3-second Delay, types the text into whatever has focus, then presses `shift+home` to select the typed line. Click into a text editor during the delay.\n\n- **Row 4 — Move Mouse → Mouse Position → Click → Hotkey**: glides the mouse 200 px right over half a second, reads where it landed, right-clicks there to open a context menu, then closes it with `esc`.\n- **Row 5 — Find Window → Click → Type Text** (Windows only, run Row 2 first): finds Notepad, fixes its text area at 800×600 logical pixels, clicks the middle of it and types a line.\n\n**Abort**: move the mouse into a screen corner to stop a running sequence (`failsafe`).\n\n**Edit while stopped**: a Text Input or Object Input sends its value as soon as it is edited while the patch is running, which would fire the input right away."
       },
       "config_specs": {
         "note": {
@@ -16,7 +16,7 @@
       "x": -760,
       "y": 0,
       "width": 700,
-      "height": 540
+      "height": 620
     },
     {
       "id": "2",
@@ -642,6 +642,226 @@
       },
       "x": 1640,
       "y": 1480
+    },
+    {
+      "id": "25",
+      "def_name": "modular_agent_std::input::UnitInputModule",
+      "outputs": [
+        "unit"
+      ],
+      "configs": {
+        "unit": {}
+      },
+      "config_specs": {
+        "unit": {
+          "value": null,
+          "type": "unit",
+          "hide_title": true
+        }
+      },
+      "x": 0,
+      "y": 1480
+    },
+    {
+      "id": "26",
+      "def_name": "modular_agent_autogui::modules::FindWindowModule",
+      "inputs": [
+        "unit"
+      ],
+      "outputs": [
+        "window"
+      ],
+      "configs": {
+        "title": "",
+        "process_name": "notepad.exe",
+        "timeout_ms": 3000,
+        "activate": true,
+        "width": 800.0,
+        "height": 600.0
+      },
+      "config_specs": {
+        "title": {
+          "value": "",
+          "type": "string"
+        },
+        "process_name": {
+          "value": "",
+          "type": "string"
+        },
+        "timeout_ms": {
+          "value": 0,
+          "type": "integer"
+        },
+        "activate": {
+          "value": true,
+          "type": "boolean"
+        },
+        "width": {
+          "value": 0.0,
+          "type": "number"
+        },
+        "height": {
+          "value": 0.0,
+          "type": "number"
+        }
+      },
+      "x": 240,
+      "y": 1480
+    },
+    {
+      "id": "27",
+      "def_name": "modular_agent_autogui::modules::ClickModule",
+      "inputs": [
+        "position"
+      ],
+      "outputs": [
+        "done"
+      ],
+      "configs": {
+        "x": 0.0,
+        "y": 0.0,
+        "anchor": "center",
+        "button": "left",
+        "clicks": 1,
+        "scale": 1.0,
+        "failsafe": true
+      },
+      "config_specs": {
+        "x": {
+          "value": 0.0,
+          "type": "number"
+        },
+        "y": {
+          "value": 0.0,
+          "type": "number"
+        },
+        "anchor": {
+          "value": "top_left",
+          "type": "string"
+        },
+        "button": {
+          "value": "left",
+          "type": "string"
+        },
+        "clicks": {
+          "value": 1,
+          "type": "integer"
+        },
+        "scale": {
+          "value": 1.0,
+          "type": "number"
+        },
+        "failsafe": {
+          "value": true,
+          "type": "boolean"
+        }
+      },
+      "x": 520,
+      "y": 1480
+    },
+    {
+      "id": "28",
+      "def_name": "modular_agent_std::input::TextInputModule",
+      "inputs": [
+        "unit"
+      ],
+      "outputs": [
+        "text"
+      ],
+      "configs": {
+        "text": "Clicked into Notepad by Find Window and Click\n"
+      },
+      "config_specs": {
+        "text": {
+          "value": "",
+          "type": "text",
+          "hide_title": true
+        }
+      },
+      "x": 800,
+      "y": 1480
+    },
+    {
+      "id": "29",
+      "def_name": "modular_agent_autogui::modules::TypeTextModule",
+      "inputs": [
+        "text"
+      ],
+      "outputs": [
+        "done"
+      ],
+      "configs": {
+        "interval_ms": 0,
+        "failsafe": true
+      },
+      "config_specs": {
+        "interval_ms": {
+          "value": 0,
+          "type": "integer"
+        },
+        "failsafe": {
+          "value": true,
+          "type": "boolean"
+        }
+      },
+      "x": 1080,
+      "y": 1480
+    },
+    {
+      "id": "30",
+      "def_name": "modular_agent_std::display::DisplayValueModule",
+      "inputs": [
+        "value"
+      ],
+      "configs": {
+        "save_value": false,
+        "value": null
+      },
+      "config_specs": {
+        "save_value": {
+          "value": false,
+          "type": "boolean",
+          "title": "Save Value",
+          "description": "Persist the displayed value in the patch file",
+          "detail": true
+        },
+        "value": {
+          "value": null,
+          "type": "*",
+          "hide_title": true,
+          "readonly": true
+        }
+      },
+      "x": 1360,
+      "y": 1480
+    },
+    {
+      "id": "31",
+      "def_name": "modular_agent_std::display::DisplayValueModule",
+      "inputs": [
+        "value"
+      ],
+      "configs": {
+        "save_value": false,
+        "value": null
+      },
+      "config_specs": {
+        "save_value": {
+          "value": false,
+          "type": "boolean",
+          "title": "Save Value",
+          "description": "Persist the displayed value in the patch file",
+          "detail": true
+        },
+        "value": {
+          "value": null,
+          "type": "*",
+          "hide_title": true,
+          "readonly": true
+        }
+      },
+      "x": 1360,
+      "y": 1720
     }
   ],
   "connections": [
@@ -775,6 +995,54 @@
       "source": "21",
       "source_handle": "err",
       "target": "23",
+      "target_handle": "value"
+    },
+    {
+      "source": "25",
+      "source_handle": "unit",
+      "target": "26",
+      "target_handle": "unit"
+    },
+    {
+      "source": "26",
+      "source_handle": "window",
+      "target": "27",
+      "target_handle": "position"
+    },
+    {
+      "source": "27",
+      "source_handle": "done",
+      "target": "28",
+      "target_handle": "unit"
+    },
+    {
+      "source": "28",
+      "source_handle": "text",
+      "target": "29",
+      "target_handle": "text"
+    },
+    {
+      "source": "29",
+      "source_handle": "done",
+      "target": "30",
+      "target_handle": "value"
+    },
+    {
+      "source": "26",
+      "source_handle": "err",
+      "target": "31",
+      "target_handle": "value"
+    },
+    {
+      "source": "27",
+      "source_handle": "err",
+      "target": "31",
+      "target_handle": "value"
+    },
+    {
+      "source": "29",
+      "source_handle": "err",
+      "target": "31",
       "target_handle": "value"
     }
   ],

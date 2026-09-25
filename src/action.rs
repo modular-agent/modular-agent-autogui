@@ -16,7 +16,6 @@ pub(crate) enum Action {
         relative: bool,
         #[serde(default)]
         duration_ms: u64,
-        origin: Option<Point>,
     },
     Click {
         x: Option<f64>,
@@ -25,7 +24,6 @@ pub(crate) enum Action {
         button: MouseButton,
         #[serde(default = "one")]
         clicks: u32,
-        origin: Option<Point>,
     },
     Down {
         #[serde(default)]
@@ -44,7 +42,6 @@ pub(crate) enum Action {
         relative: bool,
         #[serde(default)]
         duration_ms: u64,
-        origin: Option<Point>,
     },
     Scroll {
         #[serde(default)]
@@ -76,15 +73,6 @@ pub(crate) enum Action {
 
 fn one() -> u32 {
     1
-}
-
-/// A point in screen pixels. As `origin`, it is where the image the action
-/// coordinates were read from sits on the screen, such as the `x`/`y` of a
-/// Screen Capture event.
-#[derive(Debug, Clone, Copy, PartialEq, Default, Deserialize)]
-pub(crate) struct Point {
-    pub x: f64,
-    pub y: f64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Default, Deserialize)]
@@ -123,42 +111,22 @@ pub(crate) fn parse_actions(value: &Value) -> Result<Vec<Action>> {
     }
     .map_err(|e| Error::InvalidValue(format!("Invalid input action: {e}")))?;
 
+    // Reject unknown key names before anything is sent, so a typo late in a
+    // sequence does not leave it half-executed.
     for action in &actions {
-        validate(action)?;
-    }
-    Ok(actions)
-}
-
-/// Rejects what `serde` cannot, so that every action can be checked before
-/// anything is sent and a mistake late in a sequence does not leave it
-/// half-executed.
-pub(crate) fn validate(action: &Action) -> Result<()> {
-    match action {
-        Action::Move {
-            relative: true,
-            origin: Some(_),
-            ..
-        }
-        | Action::Drag {
-            relative: true,
-            origin: Some(_),
-            ..
-        } => {
-            return Err(Error::InvalidValue(
-                "origin cannot be combined with relative".to_string(),
-            ));
-        }
-        Action::Key { key, .. } | Action::KeyDown { key } | Action::KeyUp { key } => {
-            parse_key(key)?;
-        }
-        Action::Hotkey { keys } => {
-            for key in keys {
+        match action {
+            Action::Key { key, .. } | Action::KeyDown { key } | Action::KeyUp { key } => {
                 parse_key(key)?;
             }
+            Action::Hotkey { keys } => {
+                for key in keys {
+                    parse_key(key)?;
+                }
+            }
+            _ => {}
         }
-        _ => {}
     }
-    Ok(())
+    Ok(actions)
 }
 
 /// Parses a hotkey string such as `"ctrl+shift+esc"`.
@@ -334,12 +302,25 @@ where
 {
     static LOCK: Mutex<()> = Mutex::new(());
 
-    tokio::task::spawn_blocking(move || {
+    run_blocking(move || {
         let _guard = LOCK.lock().unwrap_or_else(|e| e.into_inner());
-        init_dpi_awareness();
         let mut enigo = Enigo::new(&Settings::default())
             .map_err(|e| Error::Other(format!("Failed to initialize input: {e}")))?;
         f(&mut enigo)
+    })
+    .await
+}
+
+/// Runs `f` on a blocking thread made DPI aware, so screen coordinates read
+/// there are physical pixels.
+pub(crate) async fn run_blocking<T, F>(f: F) -> Result<T>
+where
+    T: Send + 'static,
+    F: FnOnce() -> Result<T> + Send + 'static,
+{
+    tokio::task::spawn_blocking(move || {
+        init_dpi_awareness();
+        f()
     })
     .await
     .map_err(|e| Error::Other(format!("Input task failed: {e}")))?
@@ -384,18 +365,20 @@ fn check_failsafe(enigo: &Enigo) -> Result<()> {
 }
 
 fn run_one(enigo: &mut Enigo, action: &Action, opts: &Options) -> Result<()> {
-    let to_screen = |v: f64, o: f64| (o + v / opts.scale).round() as i32;
+    let to_screen = |v: f64| (v / opts.scale).round() as i32;
     // Relative moves are resolved to an absolute target here rather than sent
     // as `Coordinate::Rel`, which Windows scales by the mouse acceleration
-    // setting.
-    let target = |enigo: &Enigo, x: f64, y: f64, relative: bool, origin: Option<Point>| {
-        if relative {
+    // setting. The target is checked before any button is pressed, so a drag
+    // does not fail with the button held.
+    let target = |enigo: &Enigo, x: f64, y: f64, relative: bool| {
+        let (x, y) = if relative {
             let (cx, cy) = enigo.location().map_err(input_error)?;
-            Ok((cx + to_screen(x, 0.0), cy + to_screen(y, 0.0)))
+            (cx + to_screen(x), cy + to_screen(y))
         } else {
-            let o = origin.unwrap_or_default();
-            Ok((to_screen(x, o.x), to_screen(y, o.y)))
-        }
+            (to_screen(x), to_screen(y))
+        };
+        ensure_on_screen(enigo, x, y)?;
+        Ok((x, y))
     };
     match action {
         Action::Move {
@@ -403,9 +386,8 @@ fn run_one(enigo: &mut Enigo, action: &Action, opts: &Options) -> Result<()> {
             y,
             relative,
             duration_ms,
-            origin,
         } => {
-            let to = target(enigo, *x, *y, *relative, *origin)?;
+            let to = target(enigo, *x, *y, *relative)?;
             glide(enigo, to, Duration::from_millis(*duration_ms))?;
         }
         Action::Click {
@@ -413,13 +395,12 @@ fn run_one(enigo: &mut Enigo, action: &Action, opts: &Options) -> Result<()> {
             y,
             button,
             clicks,
-            origin,
         } => {
             if x.is_some() || y.is_some() {
                 let (cx, cy) = enigo.location().map_err(input_error)?;
-                let o = origin.unwrap_or_default();
-                let x = x.map_or(cx, |x| to_screen(x, o.x));
-                let y = y.map_or(cy, |y| to_screen(y, o.y));
+                let x = x.map_or(cx, to_screen);
+                let y = y.map_or(cy, to_screen);
+                ensure_on_screen(enigo, x, y)?;
                 move_to(enigo, x, y)?;
             }
             for _ in 0..*clicks {
@@ -444,9 +425,8 @@ fn run_one(enigo: &mut Enigo, action: &Action, opts: &Options) -> Result<()> {
             button,
             relative,
             duration_ms,
-            origin,
         } => {
-            let to = target(enigo, *x, *y, *relative, *origin)?;
+            let to = target(enigo, *x, *y, *relative)?;
             // Short pauses let the target application register the press
             // before the move, and the move before the release.
             let step = Duration::from_millis(50);
@@ -506,6 +486,18 @@ fn run_one(enigo: &mut Enigo, action: &Action, opts: &Options) -> Result<()> {
     Ok(())
 }
 
+/// enigo maps absolute coordinates onto the primary monitor only, so a point
+/// elsewhere would land somewhere unrelated.
+fn ensure_on_screen(enigo: &Enigo, x: i32, y: i32) -> Result<()> {
+    let (w, h) = enigo.main_display().map_err(input_error)?;
+    if !(0..w).contains(&x) || !(0..h).contains(&y) {
+        return Err(Error::InvalidValue(format!(
+            "({x}, {y}) is outside the primary monitor ({w}x{h})"
+        )));
+    }
+    Ok(())
+}
+
 fn move_to(enigo: &mut Enigo, x: i32, y: i32) -> Result<()> {
     enigo.move_mouse(x, y, Coordinate::Abs).map_err(input_error)
 }
@@ -556,8 +548,7 @@ mod tests {
                 x: 10.0,
                 y: 20.0,
                 relative: false,
-                duration_ms: 0,
-                origin: None
+                duration_ms: 0
             }]
         );
 
@@ -573,8 +564,7 @@ mod tests {
                     x: None,
                     y: None,
                     button: MouseButton::Left,
-                    clicks: 1,
-                    origin: None
+                    clicks: 1
                 },
                 Action::Type {
                     text: "hi".to_string()
@@ -600,7 +590,7 @@ mod tests {
     fn move_options() {
         let actions = parse(serde_json::json!([
             {"action": "move", "x": 5, "y": -5, "relative": true, "duration_ms": 200},
-            {"action": "drag", "x": 1, "y": 2, "origin": {"x": 100, "y": 50}},
+            {"action": "drag", "x": 1, "y": 2},
             {"action": "key", "key": "tab", "presses": 3},
         ]))
         .unwrap();
@@ -611,28 +601,20 @@ mod tests {
                     x: 5.0,
                     y: -5.0,
                     relative: true,
-                    duration_ms: 200,
-                    origin: None
+                    duration_ms: 200
                 },
                 Action::Drag {
                     x: 1.0,
                     y: 2.0,
                     button: MouseButton::Left,
                     relative: false,
-                    duration_ms: 0,
-                    origin: Some(Point { x: 100.0, y: 50.0 })
+                    duration_ms: 0
                 },
                 Action::Key {
                     key: "tab".to_string(),
                     presses: 3
                 },
             ]
-        );
-        assert!(
-            parse(serde_json::json!({
-                "action": "move", "x": 1, "y": 1, "relative": true, "origin": {"x": 0, "y": 0}
-            }))
-            .is_err()
         );
     }
 
