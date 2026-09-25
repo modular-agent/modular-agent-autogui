@@ -4,7 +4,7 @@ use enigo::Mouse;
 use modular_agent_core::im::hashmap;
 use modular_agent_core::{
     AsModule, Error, ModularAgent, Module, ModuleContext, ModuleData, ModuleOutput, ModuleSpec,
-    Result, Value, async_trait, modular_agent,
+    Result, Value, async_trait, modular_agent, photon_rs,
 };
 use serde::Deserialize;
 
@@ -22,6 +22,7 @@ static PORT_UNIT: &str = "unit";
 static PORT_DONE: &str = "done";
 static PORT_POSITION: &str = "position";
 static PORT_WINDOW: &str = "window";
+static PORT_IMAGE: &str = "image";
 
 static CONFIG_PAUSE_MS: &str = "pause_ms";
 static CONFIG_INTERVAL_MS: &str = "interval_ms";
@@ -581,15 +582,7 @@ impl AsModule for FindWindowModule {
 
     async fn process(&mut self, ctx: ModuleContext, _port: String, _value: Value) -> Result<()> {
         let configs = self.configs()?;
-        let query = Query {
-            title: configs.get_string_or_default(CONFIG_TITLE),
-            process_name: configs.get_string_or_default(CONFIG_PROCESS_NAME),
-        };
-        if query.title.is_empty() && query.process_name.is_empty() {
-            return Err(Error::InvalidConfig(
-                "Set title or process_name".to_string(),
-            ));
-        }
+        let query = window_query(self)?;
         let size = match (
             configs.get_number_or(CONFIG_WIDTH, 0.0),
             configs.get_number_or(CONFIG_HEIGHT, 0.0),
@@ -616,10 +609,7 @@ impl AsModule for FindWindowModule {
                 break found;
             }
             if tokio::time::Instant::now() >= deadline {
-                return Err(Error::Other(format!(
-                    "No window found for title {:?}, process_name {:?}",
-                    query.title, query.process_name
-                )));
+                return Err(not_found(&query));
             }
             tokio::time::sleep(FIND_POLL).await;
         };
@@ -643,6 +633,107 @@ impl AsModule for FindWindowModule {
             );
         }
         self.output(ctx, PORT_WINDOW, window_value(&placed)).await
+    }
+}
+
+fn window_query(module: &impl Module) -> Result<Query> {
+    let configs = module.configs()?;
+    let query = Query {
+        title: configs.get_string_or_default(CONFIG_TITLE),
+        process_name: configs.get_string_or_default(CONFIG_PROCESS_NAME),
+    };
+    if query.title.is_empty() && query.process_name.is_empty() {
+        return Err(Error::InvalidConfig(
+            "Set title or process_name".to_string(),
+        ));
+    }
+    Ok(query)
+}
+
+fn not_found(query: &Query) -> Error {
+    Error::Other(format!(
+        "No window found for title {:?}, process_name {:?}",
+        query.title, query.process_name
+    ))
+}
+
+/// Captures an image of a window, whose pixels line up with the offsets
+/// Move Mouse and Click take.
+///
+/// The input is dispatched on its shape: a window record from Find Window
+/// captures that window, so it can be sized and brought forward first. Any
+/// other value finds the topmost visible window by `title` and
+/// `process_name`, as Find Window does.
+///
+/// Only the client area is captured, and it is captured as the application
+/// draws it, even where other windows cover it. With `scale` 1.0 the image is
+/// in logical pixels, so a point read off the image is the `x`/`y` to put in
+/// Click with the `top_left` anchor.
+///
+/// Windows only.
+///
+/// # Ports
+/// - Input `unit`: A window record from Find Window, or any value to find the window by the configs
+/// - Output `window`: The window record, as Find Window outputs it
+/// - Output `image`: The client area
+///
+/// # Configuration
+/// - `title`: Text the window title contains. Unused for a window record input
+/// - `process_name`: Text the executable name contains, such as `notepad.exe`. Unused for a window record input
+/// - `scale`: Image pixels per logical pixel. Raise it for detail, such as for a vision model reading small text, or lower it to send fewer pixels (default: 1.0)
+#[modular_agent(
+    title = "Capture Window",
+    category = CATEGORY_WINDOW,
+    inputs = [PORT_UNIT],
+    outputs = [PORT_WINDOW, PORT_IMAGE],
+    string_config(name = CONFIG_TITLE),
+    string_config(name = CONFIG_PROCESS_NAME),
+    number_config(name = CONFIG_SCALE, default = 1.0),
+)]
+struct CaptureWindowModule {
+    data: ModuleData,
+}
+
+#[async_trait]
+impl AsModule for CaptureWindowModule {
+    fn new(ma: ModularAgent, id: String, spec: ModuleSpec) -> Result<Self> {
+        Ok(Self {
+            data: ModuleData::new(ma, id, spec),
+        })
+    }
+
+    async fn process(&mut self, ctx: ModuleContext, _port: String, value: Value) -> Result<()> {
+        let scale = scale(self)?;
+        let id = if value.get("type").and_then(Value::as_str) == Some("window") {
+            value
+                .get_i64("id")
+                .ok_or_else(|| Error::InvalidValue("window record has no id".to_string()))?
+        } else {
+            let query = window_query(self)?;
+            let q = query.clone();
+            action::run_blocking(move || window::find(&q))
+                .await?
+                .ok_or_else(|| not_found(&query))?
+                .id
+        };
+        let (info, image) = action::run_blocking(move || window::capture(id)).await?;
+
+        let width = (image.get_width() as f64 / info.dpi_scale * scale).round() as u32;
+        let height = (image.get_height() as f64 / info.dpi_scale * scale).round() as u32;
+        let image = if (width, height) == (image.get_width(), image.get_height()) {
+            image
+        } else {
+            photon_rs::transform::resize(
+                &image,
+                width.max(1),
+                height.max(1),
+                photon_rs::transform::SamplingFilter::Triangle,
+            )
+        };
+
+        self.output(ctx.clone(), PORT_WINDOW, window_value(&info))
+            .await?;
+        self.output(ctx, PORT_IMAGE, Value::image(image)).await
     }
 }
 

@@ -4,7 +4,7 @@
       "id": "1",
       "def_name": "modular_agent_std::ui::NoteModule",
       "configs": {
-        "note": "# AutoGUI showcase\n\nStart the patch, then press a **Unit Input** on the left. Every row sends real keyboard and mouse input to the desktop.\n\n- **Row 1 — Mouse Position**: reads the cursor position, and its offset in the window under it.\n- **Row 2 — GUI Action** (Windows only): opens Notepad with Win+R and types into it. The Object Input holds the action array; each action is one step, run in order with `pause_ms` between them.\n- **Row 3 — Type Text → Hotkey**: after a 3-second Delay, types the text into whatever has focus, then presses `shift+home` to select the typed line. Click into a text editor during the delay.\n\n- **Row 4 — Move Mouse → Mouse Position → Click → Hotkey**: glides the mouse 200 px right over half a second, reads where it landed, right-clicks there to open a context menu, then closes it with `esc`.\n- **Row 5 — Find Window → Click → Type Text** (Windows only, run Row 2 first): finds Notepad, fixes its text area at 800×600 logical pixels, clicks the middle of it and types a line.\n\n**Abort**: move the mouse into a screen corner to stop a running sequence (`failsafe`).\n\n**Edit while stopped**: a Text Input or Object Input sends its value as soon as it is edited while the patch is running, which would fire the input right away."
+        "note": "# AutoGUI showcase\n\nStart the patch, then press a **Unit Input** on the left. Every row sends real keyboard and mouse input to the desktop.\n\n- **Row 1 — Mouse Position**: reads the cursor position, and its offset in the window under it.\n- **Row 2 — GUI Action** (Windows only): opens Notepad with Win+R and types into it. The Object Input holds the action array; each action is one step, run in order with `pause_ms` between them.\n- **Row 3 — Type Text → Hotkey**: after a 3-second Delay, types the text into whatever has focus, then presses `shift+home` to select the typed line. Click into a text editor during the delay.\n\n- **Row 4 — Move Mouse → Mouse Position → Click → Hotkey**: glides the mouse 200 px right over half a second, reads where it landed, right-clicks there to open a context menu, then closes it with `esc`.\n- **Row 5 — Find Window → Click → Type Text** (Windows only, run Row 2 first): finds Notepad, fixes its text area at 800×600 logical pixels, clicks the middle of it and types a line. Capture Window shows the window at the same time.\n\n**Abort**: move the mouse into a screen corner to stop a running sequence (`failsafe`).\n\n**Edit while stopped**: a Text Input or Object Input sends its value as soon as it is edited while the patch is running, which would fire the input right away."
       },
       "config_specs": {
         "note": {
@@ -862,6 +862,68 @@
       },
       "x": 1360,
       "y": 1720
+    },
+    {
+      "id": "32",
+      "def_name": "modular_agent_autogui::modules::CaptureWindowModule",
+      "inputs": [
+        "unit"
+      ],
+      "outputs": [
+        "window",
+        "image"
+      ],
+      "configs": {
+        "title": "",
+        "process_name": "",
+        "scale": 0.5
+      },
+      "config_specs": {
+        "title": {
+          "value": "",
+          "type": "string"
+        },
+        "process_name": {
+          "value": "",
+          "type": "string"
+        },
+        "scale": {
+          "value": 1.0,
+          "type": "number"
+        }
+      },
+      "x": 520,
+      "y": 1960
+    },
+    {
+      "id": "33",
+      "def_name": "modular_agent_std::display::DisplayValueModule",
+      "inputs": [
+        "value"
+      ],
+      "configs": {
+        "save_value": false,
+        "value": null
+      },
+      "config_specs": {
+        "save_value": {
+          "value": false,
+          "type": "boolean",
+          "title": "Save Value",
+          "description": "Persist the displayed value in the patch file",
+          "detail": true
+        },
+        "value": {
+          "value": null,
+          "type": "*",
+          "hide_title": true,
+          "readonly": true
+        }
+      },
+      "x": 800,
+      "y": 1960,
+      "width": 440,
+      "height": 360
     }
   ],
   "connections": [
@@ -1041,6 +1103,24 @@
     },
     {
       "source": "29",
+      "source_handle": "err",
+      "target": "31",
+      "target_handle": "value"
+    },
+    {
+      "source": "26",
+      "source_handle": "window",
+      "target": "32",
+      "target_handle": "unit"
+    },
+    {
+      "source": "32",
+      "source_handle": "image",
+      "target": "33",
+      "target_handle": "value"
+    },
+    {
+      "source": "32",
       "source_handle": "err",
       "target": "31",
       "target_handle": "value"

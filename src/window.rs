@@ -1,4 +1,5 @@
-//! Top-level window lookup and placement. Only Windows is implemented.
+//! Top-level window lookup, placement and capture. Only Windows is
+//! implemented.
 //!
 //! Positions and sizes are those of the client area, where an application
 //! draws its controls: the frame and title bar vary with the theme and DPI,
@@ -7,7 +8,7 @@
 #[cfg(not(target_os = "windows"))]
 use enigo::Enigo;
 #[cfg(not(target_os = "windows"))]
-use modular_agent_core::{Error, Result};
+use modular_agent_core::{Error, PhotonImage, Result};
 
 #[derive(Debug, Clone)]
 pub(crate) struct WindowInfo {
@@ -63,7 +64,7 @@ fn physical_size(info: &WindowInfo, (w, h): (f64, f64)) -> (i32, i32) {
 }
 
 #[cfg(target_os = "windows")]
-pub(crate) use imp::{at_point, find, place};
+pub(crate) use imp::{at_point, capture, find, place};
 
 #[cfg(target_os = "windows")]
 mod imp {
@@ -72,7 +73,7 @@ mod imp {
     use std::time::Duration;
 
     use enigo::{Direction, Enigo, Key, Keyboard};
-    use modular_agent_core::{Error, Result};
+    use modular_agent_core::{Error, PhotonImage, Result};
     use windows::Win32::Foundation::{CloseHandle, HWND, LPARAM, POINT, RECT};
     use windows::Win32::Graphics::Dwm::{DWMWA_CLOAKED, DwmGetWindowAttribute};
     use windows::Win32::Graphics::Gdi::ClientToScreen;
@@ -290,6 +291,35 @@ mod imp {
         path.rsplit('\\').next().map(str::to_string)
     }
 
+    /// Captures the client area as it is drawn, even where other windows
+    /// cover it. The image is in physical pixels, so a pixel's position in it
+    /// is its offset in the client area.
+    pub(crate) fn capture(id: i64) -> Result<(WindowInfo, PhotonImage)> {
+        let hwnd = HWND(id as *mut c_void);
+        // SAFETY: IsWindow accepts any handle value.
+        if !unsafe { IsWindow(Some(hwnd)) }.as_bool() {
+            return Err(Error::Other("The window has been closed".to_string()));
+        }
+        // SAFETY: hwnd is a valid window.
+        if unsafe { IsIconic(hwnd) }.as_bool() {
+            return Err(Error::Other(
+                "The window is minimized; restore it first, such as with Find Window".to_string(),
+            ));
+        }
+        let capture_error = |e: xcap::XCapError| Error::Other(format!("Capture failed: {e}"));
+        // xcap identifies a window by the low 32 bits of its handle, which
+        // are all a window handle uses.
+        let window = xcap::Window::all()
+            .map_err(capture_error)?
+            .into_iter()
+            .find(|w| w.id().is_ok_and(|w_id| w_id == id as u32))
+            .ok_or_else(|| Error::Other("The window has been closed".to_string()))?;
+        let image = window.capture_image().map_err(capture_error)?;
+        let (width, height) = image.dimensions();
+        let image = PhotonImage::new(image.into_raw(), width, height);
+        Ok((read(hwnd)?, image))
+    }
+
     fn win_error(e: windows::core::Error) -> Error {
         Error::Other(format!("Window operation failed: {e}"))
     }
@@ -307,6 +337,11 @@ pub(crate) fn at_point(_x: i32, _y: i32) -> Result<Option<WindowInfo>> {
 
 #[cfg(not(target_os = "windows"))]
 pub(crate) fn place(_enigo: &mut Enigo, _id: i64, _placement: &Placement) -> Result<WindowInfo> {
+    Err(unsupported())
+}
+
+#[cfg(not(target_os = "windows"))]
+pub(crate) fn capture(_id: i64) -> Result<(WindowInfo, PhotonImage)> {
     Err(unsupported())
 }
 
